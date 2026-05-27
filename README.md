@@ -34,10 +34,10 @@ Internet Users
 aws configure
 
 # Upload files
-aws s3 sync . s3://your-bucket-name/
+aws s3 sync . s3://bucket-name/
 
 # Verify upload
-aws s3 ls s3://your-bucket-name/
+aws s3 ls s3://bucket-name/
 ```
 
 ### Key concepts demonstrated
@@ -85,7 +85,7 @@ yum update -y
 yum install -y httpd
 systemctl start httpd
 systemctl enable httpd
-echo "<h1>Hello from EC2 - Server 1</h1><p>Instance ID: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)</p>" > /var/www/html/index.html
+echo "<h1>Hello from EC2 CCP Project 02 - Server $(hostname -f) </h1>" > /var/www/html/index.html
 ```
 
 ### Key concepts demonstrated
