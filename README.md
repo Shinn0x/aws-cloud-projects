@@ -51,9 +51,9 @@ aws s3 ls s3://bucket-name/
 
 ---
 
-## Project 2 — EC2 Web Server with Application Load Balancer
+## Project 2 — EC2 Web Server with Application Load Balancer + ASG
 
-A highly available web application running across two EC2 instances behind an Application Load Balancer, with an Auto Scaling Group.
+A highly available web application where the Auto Scaling Group owns the EC2 instance lifecycle — instances are never launched manually. ASG creates and registers them automatically behind the Application Load Balancer.
 
 ### Architecture
 
@@ -63,21 +63,39 @@ Internet Users
 [ Application Load Balancer ]   ← single DNS endpoint
      /              \
 [EC2 Instance 1]  [EC2 Instance 2]   ← Target Group
- "Server 1"        "Server 2"
+                                        (auto-registered by ASG)
       ↑
 Auto Scaling Group (Min=1, Desired=2, Max=4)
+  └─ Launch Template (defines EC2 blueprint + User Data)
 ```
+
+### Workflow (build order)
+
+```
+1. Security Groups       — ALB-SG (open to internet), EC2-SG (accepts from ALB-SG only)
+         ↓
+2. Launch Template       — defines AMI, instance type, EC2-SG, User Data script
+         ↓
+3. Target Group          — empty at first, HTTP port 80, health check on /
+         ↓
+4. Application Load Balancer — listener port 80 → forward to Target Group
+         ↓
+5. Auto Scaling Group    — uses Launch Template, attached to Target Group
+                           ASG auto-creates instances + auto-registers them to ALB
+```
+
+> ASG owns the instances — they are never created manually. This is the production approach.
 
 ### What was practiced
 
-- Creating Security Groups with SG-to-SG referencing (EC2 only accepts traffic from ALB SG)
-- Launching EC2 instances with User Data scripts to auto-install Apache httpd
-- Creating a Target Group and registering instances
-- Creating an Application Load Balancer (Layer 7)
+- Creating Security Groups with SG-to-SG referencing (EC2 only accepts traffic from ALB-SG)
+- Writing a Launch Template with User Data to auto-install and configure Apache httpd
+- Creating an empty Target Group and attaching it to an ALB
+- Creating an Application Load Balancer (Layer 7) before instances exist
+- Creating an ASG that auto-provisions and auto-registers instances into the Target Group
 - Demonstrating health checks — stopping one EC2 reroutes traffic automatically
-- Creating an Auto Scaling Group with Target Tracking policy (CPU at 50%)
 
-### EC2 User Data script used
+### EC2 User Data script (inside Launch Template)
 
 ```bash
 #!/bin/bash
@@ -88,13 +106,17 @@ systemctl enable httpd
 echo "<h1>Hello from EC2 CCP Project 02 - Server $(hostname -f) </h1>" > /var/www/html/index.html
 ```
 
+`$(hostname -f)` displays the private DNS name of whichever instance handled the request — visible when refreshing the ALB URL, confirming load balancing is working.
+
 ### Key concepts demonstrated
 
 | Concept | Detail |
 |---|---|
-| Security Group chaining | EC2-SG source set to ALB-SG ID — no direct internet access to EC2 |
+| Security Group chaining | EC2-SG source set to ALB-SG ID — EC2 never exposed directly to internet |
+| Launch Template | Reusable EC2 blueprint — ASG uses this to spawn instances |
+| ASG-managed lifecycle | ASG creates, registers, and terminates instances — no manual EC2 launch |
 | Health Checks | ALB polls `/` every 30s — unhealthy instances removed from rotation |
-| High Availability | Two instances across AZs — one failure does not affect the site |
+| High Availability | Instances across AZs — one failure does not affect the site |
 | Auto Scaling | Target Tracking keeps average CPU at 50%, scales in/out automatically |
 
 ---
@@ -107,6 +129,5 @@ echo "<h1>Hello from EC2 CCP Project 02 - Server $(hostname -f) </h1>" > /var/ww
 
 ## Study Context
 
-Built during a 75-day Cloud/DevOps self-study plan (started 2026-05-20).
 Following Stephane Maarek's AWS Cloud Practitioner course on Udemy + Linux Foundation LFS101 on edX.
 Target certification: **AWS Certified Cloud Practitioner (CLF-C02)**
