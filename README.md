@@ -15,7 +15,7 @@ A static website deployed to S3 using the AWS CLI, with public bucket policy, ve
 Internet Users
       ↓
 [ S3 Bucket — Static Website Hosting ]
-  index.html + error.html
+  index.html + error.html <- INSIDE PROJECT01 FOLDER
 ```
 
 ### What was practiced
